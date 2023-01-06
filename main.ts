@@ -113,9 +113,11 @@ function draw(t: number) {
     const m = mat4.create();
     mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
     let m2 = mat4.create();
-    mat4.lookAt(m2, [0, 1, -6], [0, 0, 0], [0, 1, 0]);
+
+    let camera_pos = [Math.cos(t / 2000) * 6, 1, Math.sin(t / 2000) * 6];
+
+    mat4.lookAt(m2, camera_pos, [0, 0, 0], [0, 1, 0]);
     mat4.multiply(m, m, m2);
-    mat4.rotateY(m, m, t / 2000);
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
