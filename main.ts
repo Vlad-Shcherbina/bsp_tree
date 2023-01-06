@@ -31,23 +31,46 @@ let program = init_shader_program(gl, {
     void main() {
         vec3 d = normalize(v_dir_to_camera);
         vec3 n = normalize(v_normal);
-        float opacity = 1.0 - pow(0.75, 1.0 / max(abs(dot(d, n)), 0.001));
+        float opacity = 1.0 - pow(0.3, 1.0 / max(abs(dot(d, n)), 0.001));
         gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
     }`,
     uniforms: ['projection_matrix', 'camera_pos'],
     attribs: ['vertex_position', 'tex_coord', 'normal'],
 });
 
+let na = 20;
+let nb = 5;
+
+let data: number[] = [];
+for (let ib = 0; ib < nb; ib++) {
+    for (let ia = 0; ia < na; ia++) {
+        let lon = Math.PI * 2 * ia / (na - 1);
+        let lat = Math.PI * 0.5 * (ib / (nb - 1) - 0.5);
+        let x = Math.cos(lon) * Math.cos(lat);
+        let y = Math.sin(lat);
+        let z = Math.sin(lon) * Math.cos(lat);
+        let u = ia / (na - 1) * 2;
+        let v = ib / (nb - 1);
+        data.push(x, y, z, u, v, x, y, z);
+    }
+}
+
 let position_buffer = gl.createBuffer();
 assert(position_buffer !== null);
 gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
-let data = [
-     2.0,  1.0, 0.0,   1.0, 1.0,    0.0, 0.0, 1.0,
-    -2.0,  0.5, 0.0,   0.0, 1.0,    0.0, 0.0, 1.0,
-     2.0, -1.0, 0.0,   1.0, 0.0,    0.0, 0.0, 1.0,
-    -2.0, -1.0, 0.0,   0.0, 0.0,    0.0, 0.0, 1.0,
-];
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+
+let indexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+let indices = [];
+for (let ia = 0; ia < na - 1; ia++) {
+    for (let ib = 0; ib < nb - 1; ib++) {
+        let i = ia + ib * na;
+        indices.push(i, i + na, i + 1);
+        indices.push(i + 1, i + na, i + na + 1);
+    }
+}
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
 var texture = gl.createTexture();
 assert(texture !== null);
@@ -73,7 +96,7 @@ gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
 gl.enableVertexAttribArray(program.attribs.vertex_position);
 gl.vertexAttribPointer(
     program.attribs.vertex_position,
-    2, // num_components
+    3, // num_components
     gl.FLOAT, // type
     false, // normalize
     4 * 8, // stride
@@ -122,7 +145,8 @@ function draw(t: number) {
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
     gl.uniform3fv(program.uniforms.camera_pos, camera_pos);
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
     requestAnimationFrame(draw);
 }
