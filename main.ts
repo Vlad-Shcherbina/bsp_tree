@@ -12,30 +12,29 @@ let program = init_shader_program(gl, {
     attribute vec2 tex_coord;
     attribute vec3 normal;
     uniform mat4 projection_matrix;
+    uniform vec3 camera_pos;
     varying vec2 v_tex_coord;
     varying vec3 v_normal;
+    varying vec3 v_dir_to_camera;
     void main() {
-        // tex_coord;
         gl_Position = projection_matrix * vertex_position;
         v_tex_coord = tex_coord;
         v_normal = normal;
+        v_dir_to_camera = camera_pos - vertex_position.xyz;
     }`,
     fs: `
     precision mediump float;
-    uniform vec4 color;
     uniform sampler2D texture;
     varying vec2 v_tex_coord;
     varying vec3 v_normal;
+    varying vec3 v_dir_to_camera;
     void main() {
-        // gl_FragColor = color;
-        color;
-        v_tex_coord;
-        // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-        // gl_FragColor = vec4(v_tex_coord, 0.0, 1.0);
-        // gl_FragColor = texture2D(texture, v_tex_coord);
-        gl_FragColor = vec4(normalize(v_normal) * 0.5 + 0.5, 1.0);
+        vec3 d = normalize(v_dir_to_camera);
+        vec3 n = normalize(v_normal);
+        float opacity = 1.0 - pow(0.75, 1.0 / max(abs(dot(d, n)), 0.001));
+        gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
     }`,
-    uniforms: ['color', 'projection_matrix'],
+    uniforms: ['projection_matrix', 'camera_pos'],
     attribs: ['vertex_position', 'tex_coord', 'normal'],
 });
 
@@ -43,10 +42,10 @@ let position_buffer = gl.createBuffer();
 assert(position_buffer !== null);
 gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
 let data = [
-     2.0,  1.0, 0.0,   1.0, 1.0,    1.0, 0.0, 1.0,
-    -2.0,  0.5, 0.0,   0.0, 1.0,   -1.0, 0.0, 1.0,
-     2.0, -1.0, 0.0,   1.0, 0.0,    1.0, 0.0, 1.0,
-    -2.0, -1.0, 0.0,   0.0, 0.0,   -1.0, 0.0, 1.0,
+     2.0,  1.0, 0.0,   1.0, 1.0,    0.0, 0.0, 1.0,
+    -2.0,  0.5, 0.0,   0.0, 1.0,    0.0, 0.0, 1.0,
+     2.0, -1.0, 0.0,   1.0, 0.0,    0.0, 0.0, 1.0,
+    -2.0, -1.0, 0.0,   0.0, 0.0,    0.0, 0.0, 1.0,
 ];
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
 
@@ -100,13 +99,15 @@ gl.vertexAttribPointer(
 );
 
 gl.useProgram(program.program);
-gl.uniform4f(program.uniforms.color, 1.0, 1.0, 0.0, 1.0);
 
 function draw(t: number) {
     gl.clearColor(0.0, 0.0, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    const fieldOfView = Math.PI / 4;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    const fieldOfView = Math.PI / 3;
     const aspect = canvas.clientWidth / canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100.0;
@@ -114,11 +115,12 @@ function draw(t: number) {
     mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
     let m2 = mat4.create();
 
-    let camera_pos = [Math.cos(t / 2000) * 6, 1, Math.sin(t / 2000) * 6];
+    let camera_pos = [Math.cos(t / 2000) * 4, 1, Math.sin(t / 2000) * 4];
 
     mat4.lookAt(m2, camera_pos, [0, 0, 0], [0, 1, 0]);
     mat4.multiply(m, m, m2);
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
+    gl.uniform3fv(program.uniforms.camera_pos, camera_pos);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
