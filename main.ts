@@ -1,7 +1,7 @@
 import assert from './assert.js';
 import { init_shader_program } from './webgl_util.js';
 import { mat4 } from './vendor/gl-matrix.js';
-import { bottle_point, bottle_normal } from './bottle.js';
+import { two_sided_bottle_point, two_sided_bottle_normal } from './bottle.js';
 
 let canvas = document.getElementById('glcanvas') as HTMLCanvasElement;
 let gl = canvas.getContext('webgl')!;
@@ -39,19 +39,21 @@ let program = init_shader_program(gl, {
     attribs: ['vertex_position', 'tex_coord', 'normal'],
 });
 
-let na = 20;
-let nb = 50;
+let na = 20 + 1;
+let nb = 80 + 1;
 
+console.time('generate data');
 let data: number[] = [];
 for (let ib = 0; ib < nb; ib++) {
     for (let ia = 0; ia < na; ia++) {
-        let pos = bottle_point(ib / (nb - 1.0), ia / (na - 1));
-        let n = bottle_normal(ib / (nb - 1.0), ia / (na - 1));
         let u = ia / (na - 1);
         let v = ib / (nb - 1);
+        let pos = two_sided_bottle_point(0.02, v, u);
+        let n = two_sided_bottle_normal(v, u);
         data.push(...pos, u, v, ...n);
     }
 }
+console.timeEnd('generate data');
 
 let position_buffer = gl.createBuffer();
 assert(position_buffer !== null);

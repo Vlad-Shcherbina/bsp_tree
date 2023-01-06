@@ -77,13 +77,15 @@ export function bottle_normal(u: number, v: number) {
 export function two_sided_bottle_point(thickness: number, u: number, v: number) {
     let pos: [number, number, number], n: [number, number, number];
     if (u < 0.5) {
-        pos = bottle_point(u * 2, v); n = bottle_normal(u * 2, v);
+        pos = bottle_point(u * 2, v);
+        n = bottle_normal(u * 2, v);
         let res = vec3.create();
         vec3.scaleAndAdd(res, pos, n, thickness * 0.5);
         return res;
     }
     else {
-        pos = bottle_point(u * 2 - 1, 0.5 - v); n = bottle_normal(u * 2 - 1, 0.5 - v);
+        pos = bottle_point(u * 2 - 1, 1.0 - v);
+        n = bottle_normal(u * 2 - 1, 1.0 - v);
         let res = vec3.create();
         vec3.scaleAndAdd(res, pos, n, -thickness * 0.5);
         return res;
@@ -94,6 +96,6 @@ export function two_sided_bottle_normal(u: number, v: number) {
     if (u < 0.5) {
         return bottle_normal(u * 2, v);
     } else {
-        return vec3.negate(vec3.create(), bottle_normal(u * 2 - 1, 0.5 - v));
+        return vec3.negate(vec3.create(), bottle_normal(u * 2 - 1, 1.0 - v));
     }
 }
