@@ -1,6 +1,8 @@
+import assert from './assert.js';
 import { vec3 } from './vendor/gl-matrix.js';
 
 function b_spline4(t: number, p: number[]): number {
+    assert(p.length >= 4);
     return ((1 - t) * (1 - t) * (1 - t) * p[0] +
         (4 - 6 * t * t + 3 * t * t * t) * p[1] +
         (1 + 3 * t + 3 * t * t - 3 * t * t * t) * p[2] +
@@ -8,6 +10,7 @@ function b_spline4(t: number, p: number[]): number {
 }
 
 function b_spline4_diff(t: number, p: number[]): number {
+    assert(p.length >= 4);
     return 0.5 * (-(1 - t) * (1 - t) * p[0] +
         (-4 * t + 3 * t * t) * p[1] +
         (1 + 2 * t - 3 * t * t) * p[2] +
@@ -21,18 +24,20 @@ function bottle_rate(u: number): number {
     u *= sum;
     sum = 0;
     let i = 0;
-    while (i < 10 && u > sum + d[i]) { sum += d[i]; i++; }
+    while (i + 1 < 10 && u > sum + d[i]) { sum += d[i]; i++; }
     let res = 0.5 * (i + (u - sum) / d[i]);
     return res;
 }
 
-const bottle_len = [0, 0, 0, 2, 3.5, 7, 7, 7];
-const bottle_width = [0, 0.3, 0.6, 0.5, 0, 0.05, 0.3, 0.55];
+const bottle_len = [0, 0, 0, 2, 3.5, 7, 7, 7,   0];
+const bottle_width = [0, 0.3, 0.6, 0.5, 0, 0.05, 0.3, 0.55,   0];
 
-const bottle_spine_x = [0, 0, 0, 0, -0.5, 0, 1.5, 0, 0, 0];
-const bottle_spine_z = [-1, 0, 1, 2, 2.5, 4, 3, 2, 0, -2];
+const bottle_spine_x = [0, 0, 0, 0, -0.5, 0, 1.5, 0, 0, 0,   0];
+const bottle_spine_z = [-1, 0, 1, 2, 2.5, 4, 3, 2, 0, -2,   0];
 
 export function bottle_point(u: number, v: number): [number, number, number] {
+    if (u < 0) u = 0;
+    if (u > 1) u = 1;
     u = bottle_rate(u);
     let w = b_spline4(u - Math.floor(u), bottle_width.slice(Math.floor(u)));
     let l = b_spline4(u - Math.floor(u), bottle_len.slice(Math.floor(u)));
