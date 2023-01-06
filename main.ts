@@ -1,6 +1,7 @@
 import assert from './assert.js';
 import { init_shader_program } from './webgl_util.js';
 import { mat4 } from './vendor/gl-matrix.js';
+import { bottle_point, bottle_normal } from './bottle.js';
 
 let canvas = document.getElementById('glcanvas') as HTMLCanvasElement;
 let gl = canvas.getContext('webgl')!;
@@ -31,7 +32,7 @@ let program = init_shader_program(gl, {
     void main() {
         vec3 d = normalize(v_dir_to_camera);
         vec3 n = normalize(v_normal);
-        float opacity = 1.0 - pow(0.3, 1.0 / max(abs(dot(d, n)), 0.001));
+        float opacity = 1.0 - pow(0.83, 1.0 / max(abs(dot(d, n)), 0.001));
         gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
     }`,
     uniforms: ['projection_matrix', 'camera_pos'],
@@ -39,19 +40,16 @@ let program = init_shader_program(gl, {
 });
 
 let na = 20;
-let nb = 5;
+let nb = 50;
 
 let data: number[] = [];
 for (let ib = 0; ib < nb; ib++) {
     for (let ia = 0; ia < na; ia++) {
-        let lon = Math.PI * 2 * ia / (na - 1);
-        let lat = Math.PI * 0.5 * (ib / (nb - 1) - 0.5);
-        let x = Math.cos(lon) * Math.cos(lat);
-        let y = Math.sin(lat);
-        let z = Math.sin(lon) * Math.cos(lat);
-        let u = ia / (na - 1) * 2;
+        let pos = bottle_point(ib / (nb - 1.0), ia / (na - 1));
+        let n = bottle_normal(ib / (nb - 1.0), ia / (na - 1));
+        let u = ia / (na - 1);
         let v = ib / (nb - 1);
-        data.push(x, y, z, u, v, x, y, z);
+        data.push(...pos, u, v, ...n);
     }
 }
 
@@ -138,9 +136,9 @@ function draw(t: number) {
     mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
     let m2 = mat4.create();
 
-    let camera_pos = [Math.cos(t / 2000) * 4, 1, Math.sin(t / 2000) * 4];
+    let camera_pos = [Math.cos(t / 2000) * 4, 3, Math.sin(t / 2000) * 4];
 
-    mat4.lookAt(m2, camera_pos, [0, 0, 0], [0, 1, 0]);
+    mat4.lookAt(m2, camera_pos, [0, 2, 0], [0, 1, 0]);
     mat4.multiply(m, m, m2);
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
     gl.uniform3fv(program.uniforms.camera_pos, camera_pos);
