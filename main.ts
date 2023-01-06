@@ -10,38 +10,43 @@ let program = init_shader_program(gl, {
     vs: `
     attribute vec4 vertex_position;
     attribute vec2 tex_coord;
+    attribute vec3 normal;
     uniform mat4 projection_matrix;
     varying vec2 v_tex_coord;
+    varying vec3 v_normal;
     void main() {
         // tex_coord;
         gl_Position = projection_matrix * vertex_position;
         v_tex_coord = tex_coord;
+        v_normal = normal;
     }`,
     fs: `
     precision mediump float;
     uniform vec4 color;
     uniform sampler2D texture;
     varying vec2 v_tex_coord;
+    varying vec3 v_normal;
     void main() {
         // gl_FragColor = color;
         color;
-        // v_tex_coord;
+        v_tex_coord;
         // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
         // gl_FragColor = vec4(v_tex_coord, 0.0, 1.0);
-        gl_FragColor = texture2D(texture, v_tex_coord);
+        // gl_FragColor = texture2D(texture, v_tex_coord);
+        gl_FragColor = vec4(normalize(v_normal) * 0.5 + 0.5, 1.0);
     }`,
     uniforms: ['color', 'projection_matrix'],
-    attribs: ['vertex_position', 'tex_coord'],
+    attribs: ['vertex_position', 'tex_coord', 'normal'],
 });
 
 let position_buffer = gl.createBuffer();
 assert(position_buffer !== null);
 gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
 let data = [
-     2.0,  1.0, 0.0,   1.0, 1.0,
-    -2.0,  0.5, 0.0,   0.0, 1.0,
-     2.0, -1.0, 0.0,   1.0, 0.0,
-    -2.0, -1.0, 0.0,   0.0, 0.0,
+     2.0,  1.0, 0.0,   1.0, 1.0,    1.0, 0.0, 1.0,
+    -2.0,  0.5, 0.0,   0.0, 1.0,   -1.0, 0.0, 1.0,
+     2.0, -1.0, 0.0,   1.0, 0.0,    1.0, 0.0, 1.0,
+    -2.0, -1.0, 0.0,   0.0, 0.0,   -1.0, 0.0, 1.0,
 ];
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
 
@@ -66,24 +71,33 @@ gl.generateMipmap(gl.TEXTURE_2D);
 ////////////////
 
 gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+gl.enableVertexAttribArray(program.attribs.vertex_position);
 gl.vertexAttribPointer(
     program.attribs.vertex_position,
     2, // num_components
     gl.FLOAT, // type
     false, // normalize
-    4 * 5, // stride
+    4 * 8, // stride
     0, // offset
 );
-gl.enableVertexAttribArray(program.attribs.vertex_position);
+gl.enableVertexAttribArray(program.attribs.tex_coord);
 gl.vertexAttribPointer(
     program.attribs.tex_coord,
     2, // num_components
     gl.FLOAT, // type
     false, // normalize
-    4 * 5, // stride
+    4 * 8, // stride
     4 * 3, // offset
-)
-gl.enableVertexAttribArray(program.attribs.tex_coord);
+);
+gl.enableVertexAttribArray(program.attribs.normal);
+gl.vertexAttribPointer(
+    program.attribs.normal,
+    3, // num_components
+    gl.FLOAT, // type
+    false, // normalize
+    4 * 8, // stride
+    4 * 5, // offset
+);
 
 gl.useProgram(program.program);
 gl.uniform4f(program.uniforms.color, 1.0, 1.0, 0.0, 1.0);
