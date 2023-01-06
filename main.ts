@@ -88,11 +88,7 @@ gl.enableVertexAttribArray(program.attribs.tex_coord);
 gl.useProgram(program.program);
 gl.uniform4f(program.uniforms.color, 1.0, 1.0, 0.0, 1.0);
 
-let start = +new Date();
-
-function draw() {
-    let t = +new Date() - start;
-
+function draw(t: number) {
     gl.clearColor(0.0, 0.0, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -112,4 +108,4 @@ function draw() {
 
     requestAnimationFrame(draw);
 }
-draw();
+draw(0);
