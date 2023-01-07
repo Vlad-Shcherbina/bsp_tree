@@ -2,6 +2,7 @@ import assert from './assert.js';
 import { init_shader_program } from './webgl_util.js';
 import { mat4 } from './vendor/gl-matrix.js';
 import { two_sided_bottle_point, two_sided_bottle_normal } from './bottle.js';
+import * as bsp from './bsp.js';
 
 let canvas = document.getElementById('glcanvas') as HTMLCanvasElement;
 let gl = canvas.getContext('webgl')!;
@@ -55,13 +56,6 @@ for (let ib = 0; ib < nb; ib++) {
 }
 console.timeEnd('generate data');
 
-let position_buffer = gl.createBuffer();
-assert(position_buffer !== null);
-gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
-
-let indexBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 let indices = [];
 for (let ia = 0; ia < na - 1; ia++) {
     for (let ib = 0; ib < nb - 1; ib++) {
@@ -70,6 +64,18 @@ for (let ia = 0; ia < na - 1; ia++) {
         indices.push(i + 1, i + na, i + na + 1);
     }
 }
+
+let plane: bsp.Plane = { n: [1, 1, 1], d: 2 };
+let split = bsp.cut_triangles(plane, indices, data);
+indices = split.neg_triangles;
+
+let position_buffer = gl.createBuffer();
+assert(position_buffer !== null);
+gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+
+let indexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
 var texture = gl.createTexture();
