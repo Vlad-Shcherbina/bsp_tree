@@ -33,7 +33,7 @@ let program = init_shader_program(gl, {
     void main() {
         vec3 d = normalize(v_dir_to_camera);
         vec3 n = normalize(v_normal);
-        float opacity = 1.0 - pow(0.83, 1.0 / max(abs(dot(d, n)), 0.001));
+        float opacity = 1.0 - pow(0.6, 1.0 / max(abs(dot(d, n)), 0.001));
         gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
     }`,
     uniforms: ['projection_matrix', 'camera_pos'],
@@ -51,12 +51,12 @@ for (let ib = 0; ib < nb; ib++) {
         let v = ib / (nb - 1);
         let pos = two_sided_bottle_point(0.02, v, u);
         let n = two_sided_bottle_normal(v, u);
-        data.push(...pos, u, v, ...n);
+        data.push(...pos, u, 2 * v, ...n);
     }
 }
 console.timeEnd('generate data');
 
-let indices = [];
+let indices: number[] = [];
 for (let ia = 0; ia < na - 1; ia++) {
     for (let ib = 0; ib < nb - 1; ib++) {
         let i = ia + ib * na;
@@ -64,10 +64,18 @@ for (let ia = 0; ia < na - 1; ia++) {
         indices.push(i + 1, i + na, i + na + 1);
     }
 }
+console.log(data.length / 8, 'points');
+console.log(indices.length / 3, 'triangles');
 
-let plane: bsp.Plane = { n: [1, 1, 1], d: 2 };
-let split = bsp.cut_triangles(plane, indices, data);
-indices = split.neg_triangles;
+console.time('build bsp tree');
+let tree = bsp.build_bsp_tree(indices, data);
+console.timeEnd('build bsp tree');
+console.log(data.length / 8, 'points');
+
+let tmp_indices: number[] = [];
+bsp.render_bsp_tree(tree, [0, 0, 0], tmp_indices);
+let num_indices = tmp_indices.length;
+console.log(num_indices / 3, 'triangles');
 
 let position_buffer = gl.createBuffer();
 assert(position_buffer !== null);
@@ -76,7 +84,7 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
 
 let indexBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, 2 * num_indices, gl.DYNAMIC_DRAW);
 
 var texture = gl.createTexture();
 assert(texture !== null);
@@ -144,12 +152,19 @@ function draw(t: number) {
     mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
     let m2 = mat4.create();
 
-    let camera_pos = [Math.cos(t / 2000) * 4, 3, Math.sin(t / 2000) * 4];
+    let camera_pos: [number, number, number] =
+        [Math.cos(t / 2000) * 4, 3, Math.sin(t / 2000) * 4];
 
     mat4.lookAt(m2, camera_pos, [0, 2, 0], [0, 1, 0]);
     mat4.multiply(m, m, m2);
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
     gl.uniform3fv(program.uniforms.camera_pos, camera_pos);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    let indices: number[] = [];
+    bsp.render_bsp_tree(tree, camera_pos, indices);
+    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, new Uint16Array(indices));
+    assert(indices.length == num_indices);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
