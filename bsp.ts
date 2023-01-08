@@ -125,6 +125,7 @@ export function cut_triangles(plane: Plane, vertices: number[], vertex_data: num
     let neg_triangles: number[] = [];
     let pos_triangles: number[] = [];
     let plane_triangles: number[] = [];
+    let edge_split_cache = new Map<string, number>();
     for (let i = 0; i < vertices.length; i += 3) {
         let vs = vertices.slice(i, i + 3);
         let vals = vs.map(v => vec3.dot(n, vertex_data.slice(stride * v, stride * v + 3)) - d);
@@ -146,15 +147,20 @@ export function cut_triangles(plane: Plane, vertices: number[], vertex_data: num
                         pos_vs.push(vs[j]);
                     }
                     if (vals[j] < -eps && vals[j1] > eps || vals[j] > eps && vals[j1] < -eps) {
-                        let t = vals[j] / (vals[j] - vals[j1]);
-                        let v_idx = vertex_data.length / stride;
+                        let key = `${Math.min(vs[j], vs[j1])}-${Math.max(vs[j], vs[j1])}`;
+                        let v_idx = edge_split_cache.get(key);
+                        if (v_idx === undefined) {
+                            let t = vals[j] / (vals[j] - vals[j1]);
+                            v_idx = vertex_data.length / stride;
+                            for (let k = 0; k < stride; k++) {
+                                vertex_data.push(
+                                    vertex_data[vs[j] * stride + k] * (1 - t) +
+                                    vertex_data[vs[j1] * stride + k] * t);
+                            }
+                            edge_split_cache.set(key, v_idx);
+                        }
                         neg_vs.push(v_idx);
                         pos_vs.push(v_idx);
-                        for (let k = 0; k < stride; k++) {
-                            vertex_data.push(
-                                vertex_data[vs[j] * stride + k] * (1 - t) +
-                                vertex_data[vs[j1] * stride + k] * t);
-                        }
                     }
                 }
                 if (neg_vs.length == 3) {
