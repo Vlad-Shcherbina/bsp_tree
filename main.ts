@@ -3,6 +3,7 @@ import { init_shader_program } from './webgl_util.js';
 import { mat4 } from './vendor/gl-matrix.js';
 import { two_sided_bottle_point, two_sided_bottle_normal } from './bottle.js';
 import * as bsp from './bsp.js';
+import { build_texture } from './texture.js';
 
 let canvas = document.getElementById('glcanvas') as HTMLCanvasElement;
 let gl = canvas.getContext('webgl')!;
@@ -33,7 +34,7 @@ let program = init_shader_program(gl, {
     void main() {
         vec3 d = normalize(v_dir_to_camera);
         vec3 n = normalize(v_normal);
-        float opacity = 1.0 - pow(0.6, 1.0 / max(abs(dot(d, n)), 0.001));
+        float opacity = 1.0 - pow(0.4, 1.0 / max(abs(dot(d, n)), 0.001));
         gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
     }`,
     uniforms: ['projection_matrix', 'camera_pos'],
@@ -47,11 +48,11 @@ console.time('generate data');
 let data: number[] = [];
 for (let ib = 0; ib < nb; ib++) {
     for (let ia = 0; ia < na; ia++) {
-        let u = ia / (na - 1);
-        let v = ib / (nb - 1);
-        let pos = two_sided_bottle_point(0.02, v, u);
-        let n = two_sided_bottle_normal(v, u);
-        data.push(...pos, u, 2 * v, ...n);
+        let u = ib / (nb - 1);
+        let v = ia / (na - 1);
+        let pos = two_sided_bottle_point(0.02, u, v);
+        let n = two_sided_bottle_normal(u, v);
+        data.push(...pos, u, v, ...n);
     }
 }
 console.timeEnd('generate data');
@@ -93,14 +94,8 @@ gl.bindTexture(gl.TEXTURE_2D, texture);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-let size = 128;
-let tex_data = [];
-for (let i = 0; i < size; i++) {
-    for (let j = 0; j < size; j++) {
-        tex_data.push(Math.random() * 255, Math.random() * 255, Math.random() * 255, 255);
-    }
-}
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+let tex_data = build_texture(256, 64);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE,
     new Uint8Array(tex_data));
 gl.generateMipmap(gl.TEXTURE_2D);
 
