@@ -1,6 +1,6 @@
 import assert from './assert.js';
 import { init_shader_program } from './webgl_util.js';
-import { mat4 } from './vendor/gl-matrix.js';
+import { mat4, vec3, quat } from './vendor/gl-matrix.js';
 import { two_sided_bottle_point, two_sided_bottle_normal } from './bottle.js';
 import * as bsp from './bsp.js';
 import { build_texture } from './texture.js';
@@ -132,6 +132,10 @@ gl.vertexAttribPointer(
 
 gl.useProgram(program.program);
 
+let camera_pos = vec3.fromValues(0, 0, -5);
+let camera_dir = vec3.fromValues(0, 0, 1);
+let camera_up = vec3.fromValues(0, 1, 0);
+
 function draw(t: number) {
     gl.clearColor(0.0, 0.0, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -147,17 +151,21 @@ function draw(t: number) {
     mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
     let m2 = mat4.create();
 
-    let camera_pos: [number, number, number] =
-        [Math.cos(t / 2000) * 4, 3, Math.sin(t / 2000) * 4];
+    mat4.lookAt(m2,
+        camera_pos,
+        vec3.add(vec3.create(), camera_pos, camera_dir),
+        camera_up);
 
-    mat4.lookAt(m2, camera_pos, [0, 2, 0], [0, 1, 0]);
+    let tr = vec3.create();
+    mat4.decompose(quat.create(), tr, vec3.create(), m2);
+
     mat4.multiply(m, m, m2);
     gl.uniformMatrix4fv(program.uniforms.projection_matrix, false, m);
     gl.uniform3fv(program.uniforms.camera_pos, camera_pos);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     let indices: number[] = [];
-    bsp.render_bsp_tree(tree, camera_pos, indices);
+    bsp.render_bsp_tree(tree, camera_pos as any, indices);
     gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, new Uint16Array(indices));
     assert(indices.length == num_indices);
 
@@ -167,3 +175,34 @@ function draw(t: number) {
     requestAnimationFrame(draw);
 }
 draw(0);
+
+canvas.onclick = () => {
+    if (document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock();
+    } else {
+        document.exitPointerLock();
+    }
+};
+
+canvas.onmousemove = (e) => {
+    if (document.pointerLockElement !== canvas) {
+        return;
+    }
+    let sensitivity = 0.005;
+
+    let a = e.movementY * sensitivity;
+    let new_camera_dir = vec3.scale(vec3.create(), camera_dir, Math.cos(a));
+    vec3.scaleAndAdd(new_camera_dir, new_camera_dir, camera_up, -Math.sin(a));
+
+    let new_camera_up = vec3.scale(vec3.create(), camera_up, Math.cos(a));
+    vec3.scaleAndAdd(new_camera_up, new_camera_up, camera_dir, Math.sin(a));
+
+    camera_dir = new_camera_dir;
+    camera_up = new_camera_up;
+
+    let camera_right = vec3.cross(vec3.create(), camera_up, camera_dir);
+
+    a = e.movementX * sensitivity;
+    vec3.scale(camera_dir, camera_dir, Math.cos(a));
+    vec3.scaleAndAdd(camera_dir, camera_dir, camera_right, -Math.sin(a));
+}
