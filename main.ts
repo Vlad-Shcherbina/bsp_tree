@@ -35,7 +35,8 @@ let program = init_shader_program(gl, {
         vec3 d = normalize(v_dir_to_camera);
         vec3 n = normalize(v_normal);
         float opacity = 1.0 - pow(0.4, 1.0 / max(abs(dot(d, n)), 0.001));
-        gl_FragColor = texture2D(texture, v_tex_coord) * opacity;
+        float clip_opacity = min(gl_FragCoord.z * 10.0, 1.0);
+        gl_FragColor = texture2D(texture, v_tex_coord) * opacity * clip_opacity;
     }`,
     uniforms: ['projection_matrix', 'camera_pos'],
     attribs: ['vertex_position', 'tex_coord', 'normal'],
