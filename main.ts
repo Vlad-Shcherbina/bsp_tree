@@ -136,12 +136,32 @@ let camera_pos = vec3.fromValues(0, 0, -5);
 let camera_dir = vec3.fromValues(0, 0, 1);
 let camera_up = vec3.fromValues(0, 1, 0);
 
+let pressed_keys = new Set<string>();
+let prev_t = 0;
+
 function draw(t: number) {
     gl.clearColor(0.0, 0.0, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    let dt = t - prev_t;
+    prev_t = t;
+    let speed = 0.005;
+    if (pressed_keys.has('ArrowUp') || pressed_keys.has('KeyW')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_dir, speed * dt);
+    }
+    if (pressed_keys.has('ArrowDown') || pressed_keys.has('KeyS')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_dir, -speed * dt);
+    }
+    let camera_right = vec3.cross(vec3.create(), camera_dir, camera_up);
+    if (pressed_keys.has('ArrowLeft') || pressed_keys.has('KeyA')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_right, -speed * dt);
+    }
+    if (pressed_keys.has('ArrowRight') || pressed_keys.has('KeyD')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_right, speed * dt);
+    }
 
     const fieldOfView = Math.PI / 3;
     const aspect = canvas.clientWidth / canvas.clientHeight;
@@ -200,9 +220,16 @@ canvas.onmousemove = (e) => {
     camera_dir = new_camera_dir;
     camera_up = new_camera_up;
 
-    let camera_right = vec3.cross(vec3.create(), camera_up, camera_dir);
+    let camera_right = vec3.cross(vec3.create(), camera_dir, camera_up);
 
     a = e.movementX * sensitivity;
     vec3.scale(camera_dir, camera_dir, Math.cos(a));
-    vec3.scaleAndAdd(camera_dir, camera_dir, camera_right, -Math.sin(a));
+    vec3.scaleAndAdd(camera_dir, camera_dir, camera_right, Math.sin(a));
+}
+
+document.onkeydown = (e) => {
+    pressed_keys.add(e.code);
+};
+document.onkeyup = (e) => {
+    pressed_keys.delete(e.code);
 }
