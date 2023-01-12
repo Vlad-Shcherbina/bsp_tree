@@ -2,6 +2,7 @@ import assert from "./assert.js";
 import { vec3 } from "./vendor/gl-matrix.js";
 
 const eps = 1e-4;
+const stride = 8;
 
 export type BspNode = {
     plane: Plane,
@@ -53,9 +54,9 @@ function triangle_plane(vertices: [number, number, number], vertex_data: number[
     let a = vertices[0];
     let b = vertices[1];
     let c = vertices[2];
-    let a_pos = vertex_data.slice(8 * a, 8 * a + 3);
-    let b_pos = vertex_data.slice(8 * b, 8 * b + 3);
-    let c_pos = vertex_data.slice(8 * c, 8 * c + 3);
+    let a_pos = vertex_data.slice(stride * a, stride * a + 3);
+    let b_pos = vertex_data.slice(stride * b, stride * b + 3);
+    let c_pos = vertex_data.slice(stride * c, stride * c + 3);
     let u = vec3.subtract(vec3.create(), b_pos, a_pos);
     let v = vec3.subtract(vec3.create(), c_pos, a_pos);
     let n = vec3.cross(vec3.create(), u, v);
@@ -70,7 +71,6 @@ function triangle_plane(vertices: [number, number, number], vertex_data: number[
 }
 
 function find_best_cut(triangles: number[], vertex_data: number[]): Plane {
-    const stride = 8;
     const table: [number, number][] = [
         [0, 0], [0, 1], [0, 1], [0, 1],
         [1, 0], [1, 1], [1, 2], [0, 0],
@@ -127,7 +127,6 @@ function find_best_cut(triangles: number[], vertex_data: number[]): Plane {
 }
 
 export function cut_triangles(plane: Plane, vertices: number[], vertex_data: number[]) {
-    const stride = 8;
     let { n, d } = plane;
     let neg_triangles: number[] = [];
     let pos_triangles: number[] = [];
