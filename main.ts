@@ -139,8 +139,13 @@ let camera_up = vec3.fromValues(0, 1, 0);
 
 let pressed_keys = new Set<string>();
 let prev_t = 0;
+let timestamps: number[] = [];
 
 function draw(t: number) {
+    timestamps = timestamps.filter(x => x > t - 1000);
+    document.getElementById("overlay")!.innerText = 'FPS: ' + timestamps.length;
+    timestamps.push(t);
+
     // resize canvas to display size
     // (see https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html)
     let width = (gl.canvas as HTMLCanvasElement).clientWidth;
@@ -213,21 +218,20 @@ function draw(t: number) {
 }
 draw(0);
 
+let body = document.getElementsByTagName('body')[0];
+
 canvas.onclick = () => {
     if (document.pointerLockElement !== canvas) {
-        canvas.requestFullscreen();
+        body.requestFullscreen();
     } else {
         document.exitFullscreen();
     }
 };
-canvas.onfullscreenchange = (e) => {
-    console.log('on fullscreen change');
-    if (document.fullscreenElement === canvas) {
+body.onfullscreenchange = (e) => {
+    if (document.fullscreenElement === body) {
         canvas.requestPointerLock();
     } else {
         document.exitPointerLock();
-        canvas.style.width = "300px";
-        canvas.style.height = "150px";
     }
 }
 
