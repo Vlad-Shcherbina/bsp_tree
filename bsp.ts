@@ -14,18 +14,7 @@ export function build_bsp_tree(triangles: number[], vertex_data: number[]): BspN
     if (triangles.length === 0) {
         return null;
     }
-    let best_plane: Plane = { n: [0, 0, 0], d: 0 };
-    let best_score = 1e20;
-    for (let i = 0; i < triangles.length; i += 3) {
-        let plane = triangle_plane(triangles.slice(i, i + 3) as any, vertex_data);
-        let [neg_cnt, pos_cnt] = eval_cut(plane, triangles, vertex_data);
-        let score = Math.pow(neg_cnt, 2) + Math.pow(pos_cnt, 2);
-        if (score < best_score) {
-            best_score = score;
-            best_plane = plane;
-        }
-    }
-
+    let best_plane = find_best_cut(triangles, vertex_data);
     let split = cut_triangles(best_plane, triangles, vertex_data);
     assert(split.plane_triangles.length > 0);
     let pos = build_bsp_tree(split.pos_triangles, vertex_data);
@@ -80,43 +69,61 @@ function triangle_plane(vertices: [number, number, number], vertex_data: number[
     return { n, d };
 }
 
-function eval_cut(plane: Plane, vertices: number[], vertex_data: number[]): [number, number] {
+function find_best_cut(triangles: number[], vertex_data: number[]): Plane {
     const stride = 8;
-    let { n, d } = plane;
-    let num_pos_triangles = 0;
-    let num_neg_triangles = 0;
-    for (let i = 0; i < vertices.length; i += 3) {
-        let pos = 0;
-        let neg = 0;
-        for (let j = 0; j < 3; j++) {
-            let v = vertices[i + j];
-            // vec3.dot() with vertex_data.slice() is too slow
-            let idx = stride * v;
-            let val =
-                vertex_data[idx] * n[0] +
-                vertex_data[idx + 1] * n[1] +
-                vertex_data[idx + 2] * n[2]
-                - d;
+    const table: [number, number][] = [
+        [0, 0], [0, 1], [0, 1], [0, 1],
+        [1, 0], [1, 1], [1, 2], [0, 0],
+        [1, 0], [2, 1], [0, 0], [0, 0],
+        [1, 0], [0, 0], [0, 0], [0, 0],
+    ];
+
+    let dense = new Map<number, number>();
+    let dense_pos: number[] = [];
+    let dense_triangles: number[] = [];
+    for (let i = 0; i < triangles.length; i++) {
+        let v = triangles[i];
+        if (!dense.has(v)) {
+            dense.set(v, dense.size);
+            dense_pos.push(...vertex_data.slice(v * stride, v * stride + 3));
+        }
+        dense_triangles.push(dense.get(v)!);
+    }
+    let best_score = 1e20;
+    let best_plane: Plane = { n: [0, 0, 0], d: 0 };
+    let signs = new Array<number>(dense_pos.length / 3);
+    for (let i = 0; i < triangles.length; i += 3) {
+        let plane = triangle_plane(triangles.slice(i, i + 3) as any, vertex_data);
+        let {n, d} = plane;
+        for (let i = 0; i < dense.size; i++) {
+            let val = dense_pos[i * 3] * n[0]
+                    + dense_pos[i * 3 + 1] * n[1]
+                    + dense_pos[i * 3 + 2] * n[2]
+                    - d;
             if (val < -eps) {
-                neg++;
+                signs[i] = 4;
             } else if (val > eps) {
-                pos++;
+                signs[i] = 1;
+            } else {
+                signs[i] = 0;
             }
         }
-        if (neg > 0) {
-            num_neg_triangles++;
-            if (neg == 2 && pos == 1) {
-                num_neg_triangles++;
-            }
+        let num_neg_triangles = 0;
+        let num_pos_triangles = 0;
+        for (let i = 0; i < triangles.length; i += 3) {
+            let s = signs[dense_triangles[i]]
+                  + signs[dense_triangles[i + 1]]
+                  + signs[dense_triangles[i + 2]];
+            num_neg_triangles += table[s][0];
+            num_pos_triangles += table[s][1];
         }
-        if (pos > 0) {
-            num_pos_triangles++;
-            if (neg == 1 && pos == 2) {
-                num_pos_triangles++;
-            }
+        let score = Math.pow(num_neg_triangles, 2) + Math.pow(num_pos_triangles, 2);
+        if (score < best_score) {
+            best_score = score;
+            best_plane = plane;
         }
     }
-    return [num_neg_triangles, num_pos_triangles];
+    return best_plane;
 }
 
 export function cut_triangles(plane: Plane, vertices: number[], vertex_data: number[]) {
