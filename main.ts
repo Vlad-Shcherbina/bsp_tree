@@ -163,6 +163,12 @@ function draw(t: number) {
     if (pressed_keys.has('ArrowRight') || pressed_keys.has('KeyD')) {
         vec3.scaleAndAdd(camera_pos, camera_pos, camera_right, speed * dt);
     }
+    if (pressed_keys.has('Space')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_up, speed * dt);
+    }
+    if (pressed_keys.has('ShiftLeft')) {
+        vec3.scaleAndAdd(camera_pos, camera_pos, camera_up, -speed * dt);
+    }
 
     const fieldOfView = Math.PI / 3;
     const aspect = canvas.clientWidth / canvas.clientHeight;
