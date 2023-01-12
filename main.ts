@@ -141,6 +141,16 @@ let pressed_keys = new Set<string>();
 let prev_t = 0;
 
 function draw(t: number) {
+    // resize canvas to display size
+    // (see https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html)
+    let width = (gl.canvas as HTMLCanvasElement).clientWidth;
+    let height = (gl.canvas as HTMLCanvasElement).clientHeight;
+    if (gl.canvas.width !== width || gl.canvas.height !== height) {
+        gl.canvas.width = width;
+        gl.canvas.height = height;
+    }
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
     gl.clearColor(0.0, 0.0, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -205,11 +215,21 @@ draw(0);
 
 canvas.onclick = () => {
     if (document.pointerLockElement !== canvas) {
+        canvas.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+};
+canvas.onfullscreenchange = (e) => {
+    console.log('on fullscreen change');
+    if (document.fullscreenElement === canvas) {
         canvas.requestPointerLock();
     } else {
         document.exitPointerLock();
+        canvas.style.width = "300px";
+        canvas.style.height = "150px";
     }
-};
+}
 
 canvas.onmousemove = (e) => {
     if (document.pointerLockElement !== canvas) {
