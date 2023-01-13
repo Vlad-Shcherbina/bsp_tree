@@ -66,6 +66,21 @@ for (let ia = 0; ia < na - 1; ia++) {
         indices.push(i + 1, i + na, i + na + 1);
     }
 }
+
+let cut_plane: bsp.Plane = {
+    n: [0, 1, -2.5],
+    d: 1.55,
+}
+let split = bsp.cut_triangles(cut_plane, indices, data);
+indices = split.neg_triangles;
+indices.push(...split.pos_triangles.map(i => i + (data.length / 8)));
+let data2 = [...data];
+for (let i = 0; i < data2.length; i += 8) {
+    data2[i + 1] += 0.2;
+    data2[i + 2] -= 0.5;
+}
+data.push(...data2);
+
 console.log(data.length / 8, 'points');
 console.log(indices.length / 3, 'triangles');
 
@@ -133,8 +148,8 @@ gl.vertexAttribPointer(
 
 gl.useProgram(program.program);
 
-let camera_pos = vec3.fromValues(0, 0, -5);
-let camera_dir = vec3.fromValues(0, 0, 1);
+let camera_pos = vec3.fromValues(-5, 2, 0);
+let camera_dir = vec3.fromValues(1, 0, 0);
 let camera_up = vec3.fromValues(0, 1, 0);
 
 let pressed_keys = new Set<string>();
